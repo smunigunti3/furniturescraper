@@ -29,9 +29,13 @@ def find_furniture_urls():
             writer.writerow([link])
 
     driver.quit()
+    return furniture_urls
 
 
-def webpage_scraper():
+def webpage_scraper(section_url: str):
+    driver = webdriver.Chrome()
+    driver.get(section_url)
+    time.sleep(3)
     while True:
         try:
             cookie_notification = driver.find_element(By.ID, "onetrust-accept-btn-handler")
@@ -39,7 +43,7 @@ def webpage_scraper():
                 cookie_notification.click()
             show_more_button = driver.find_element(By.CLASS_NAME, "plp-btn--secondary")
             ActionChains(driver).click(show_more_button).perform()
-            time.sleep(3)
+            time.sleep(1)
         except:
             break
 
@@ -55,14 +59,33 @@ def webpage_scraper():
         name = element.find_element(By.CLASS_NAME, "plp-mastercard__image")
         results2.append(name)
 
-    productlist = []
+    productlist = set()
     for element in results2:
         product_element = element.find_element(By.TAG_NAME, 'a')
         product = product_element.get_attribute('href')
-        productlist.append(product)
+        productlist.add(product)
 
-    for product in productlist:
-        print(product)
+    driver.quit()
+    return productlist
 
 
 #find_furniture_urls()
+
+# section_urls = []
+# with open('furniture_links.csv', mode="r") as file:
+#     reader = csv.reader(file)
+#     next(reader)
+#     for row in reader:
+#         section_urls.append(row[0])
+#
+# all_products = []
+# for section_url in section_urls:
+#     product_urls = webpage_scraper(section_url)
+#     for product_url in product_urls:
+#         all_products.append({"Product URL": product_url})
+#
+# csv_filename = 'ikea_product_data.csv'
+# with open(csv_filename, mode="w", newline="") as file:
+#     writer = csv.DictWriter(file, fieldnames=["Product URL"])
+#     writer.writeheader()
+#     writer.writerows(all_products)
