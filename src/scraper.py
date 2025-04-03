@@ -3,6 +3,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 import time
 from selenium.webdriver import ActionChains
+import json
 
 def find_furniture_urls():
     driver = webdriver.Chrome()
@@ -35,7 +36,7 @@ def find_furniture_urls():
 def webpage_scraper(section_url: str):
     driver = webdriver.Chrome()
     driver.get(section_url)
-    time.sleep(3)
+    time.sleep(1)
     while True:
         try:
             cookie_notification = driver.find_element(By.ID, "onetrust-accept-btn-handler")
@@ -56,8 +57,11 @@ def webpage_scraper(section_url: str):
 
     results2 = []
     for element in results:
-        name = element.find_element(By.CLASS_NAME, "plp-mastercard__image")
-        results2.append(name)
+        try:
+            name = element.find_element(By.CLASS_NAME, "plp-mastercard__image")
+            results2.append(name)
+        except:
+            continue
 
     productlist = set()
     for element in results2:
@@ -68,24 +72,95 @@ def webpage_scraper(section_url: str):
     driver.quit()
     return productlist
 
+def extract_product_details(product_url):
+    driver = webdriver.Chrome()
+    driver.get(product_url)
+    time.sleep(1)
 
-#find_furniture_urls()
+    product_div = driver.find_element(By.CLASS_NAME, "pip-product__subgrid")
 
-# section_urls = []
-# with open('furniture_links.csv', mode="r") as file:
-#     reader = csv.reader(file)
-#     next(reader)
-#     for row in reader:
-#         section_urls.append(row[0])
-#
-# all_products = []
-# for section_url in section_urls:
-#     product_urls = webpage_scraper(section_url)
-#     for product_url in product_urls:
-#         all_products.append({"Product URL": product_url})
-#
-# csv_filename = 'ikea_product_data.csv'
-# with open(csv_filename, mode="w", newline="") as file:
-#     writer = csv.DictWriter(file, fieldnames=["Product URL"])
-#     writer.writeheader()
-#     writer.writerows(all_products)
+    product_id = product_div.get_attribute('data-product-id') or "N/A"
+    product_type = product_div.get_attribute('data-product-type') or "N/A"
+    product_name = product_div.get_attribute('data-product-name') or "N/A"
+    product_rating = product_div.get_attribute('data-product-rating') or "N/A"
+    product_price = product_div.get_attribute('data-product-price') or "N/A"
+
+    #Can also add measurement data
+
+    hydration_props = product_div.get_attribute("data-hydration-props")
+    if hydration_props:
+        try:
+            hydration_data = json.loads(hydration_props)
+            product_description = hydration_data.get("productSummary", {}).get("description", "N/A")
+        except json.JSONDecodeError:
+            product_description = "N/A"
+    else:
+        product_description = "N/A"
+
+    driver.quit()
+
+    return{
+        "Product URL": product_url,
+        "Product ID": product_id,
+        "Product Type": product_type,
+        "Product Name": product_name,
+        "Product Rating": product_rating,
+        "Product Price": product_price,
+        "Product Description": product_description,
+    }
+
+
+'''
+
+# CODE TO BE RUN - UNCOMMENT AS NECESSARY
+
+# TO FIND THE FURNITURE SECTION URLS AND PUT THEM INTO furniture_links.csv
+find_furniture_urls()
+
+# TO EXTRACT THE PRODUCT PAGE URLS AND PUT THEM INTO ikea_product_urls.csv
+section_urls = []
+with open('furniture_links.csv', mode="r") as file:
+    reader = csv.reader(file)
+    next(reader)
+    for row in reader:
+        section_urls.append(row[0])
+
+all_products = []
+for section_url in section_urls:
+    product_urls = webpage_scraper(section_url)
+    for product_url in product_urls:
+        all_products.append({"Product URL": product_url})
+
+csv_filename = 'ikea_product_urls.csv'
+with open(csv_filename, mode="w", newline="") as file:
+    writer = csv.DictWriter(file, fieldnames=["Product URL"])
+    writer.writeheader()
+    writer.writerows(all_products)
+
+
+# TO EXTRACT THE INDIVIDUAL PRODUCT FEATURES AND PUT THEM INTO ikea_full_product_data.csv
+product_urls = []
+with open('ikea_product_urls.csv', mode='r') as file:
+    reader = csv.DictReader(file)
+    for row in reader:
+        product_urls.append(row["Product URL"])
+
+all_product_data = []
+for url in product_urls[:5]:
+    product_data = extract_product_details(url)
+    if product_data:
+        all_product_data.append(product_data)
+
+csv_filename = 'ikea_full_product_data.csv'
+with open(csv_filename, mode="w", newline="") as file:
+    fieldnames = ["Product URL", "Product ID", "Product Type", "Product Name",
+                  "Product Rating", "Product Price", "Product Description"]
+    writer = csv.DictWriter(file, fieldnames=fieldnames)
+    writer.writeheader()
+    writer.writerows(all_product_data)
+
+'''
+
+
+
+
